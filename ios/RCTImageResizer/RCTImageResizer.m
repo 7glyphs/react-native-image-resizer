@@ -35,14 +35,17 @@ bool saveImage(NSString * fullPath, UIImage * image, NSString * format, float qu
 NSString * generateFilePath(NSString * ext, NSString * outputPath)
 {
     NSString* directory;
+    NSArray *documentsPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
 
     if ([outputPath length] == 0) {
-        NSArray* paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-        directory = [paths firstObject];
+        directory = [documentsPaths firstObject];
     } else {
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-        NSString *documentsDirectory = [paths objectAtIndex:0];
-        if ([outputPath hasPrefix:documentsDirectory]) {
+        NSString *documentsDirectory = [documentsPaths firstObject];
+
+        NSArray *cachePaths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        NSString *cacheDirectory = [cachePaths firstObject];
+
+        if ([outputPath hasPrefix:documentsDirectory] || [outputPath hasPrefix:cacheDirectory]) {
             directory = outputPath;
         } else {
             directory = [documentsDirectory stringByAppendingPathComponent:outputPath];
@@ -122,7 +125,7 @@ RCT_EXPORT_METHOD(createResizedImage:(NSString *)path
         return;
     }
 
-    [[_bridge moduleForClass:[RCTImageLoader class]] loadImageWithURLRequest:[RCTConvert NSURLRequest:path] callback:^(NSError *error, UIImage *image) {
+    [_bridge.imageLoader loadImageWithURLRequest:[RCTConvert NSURLRequest:path] callback:^(NSError *error, UIImage *image) {
         if (error || image == nil) {
             if ([path hasPrefix:@"data:"] || [path hasPrefix:@"file:"]) {
                 NSURL *imageUrl = [[NSURL alloc] initWithString:path];
@@ -165,9 +168,7 @@ RCT_EXPORT_METHOD(createResizedImage:(NSString *)path
         NSDictionary *response = @{@"path": fullPath,
                                    @"uri": fileUrl.absoluteString,
                                    @"name": fileName,
-                                   @"size": fileSize == nil ? @(0) : fileSize,
-                                   @"width": @(scaledImage.size.width),
-                                   @"height": @(scaledImage.size.height)
+                                   @"size": fileSize == nil ? @(0) : fileSize
                                    };
         
         callback(@[[NSNull null], response]);
